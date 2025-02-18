@@ -545,6 +545,74 @@
             background: #4CAF50;
             transition: width 0.3s ease;
         }
+
+        /* Стили для блоков */
+        .block-cell.filled {
+            background-color: transparent;
+        }
+
+        .block-cell.filled.red {
+            background-color: rgb(255, 68, 68);
+        }
+
+        .block-cell.filled.blue {
+            background-color: rgb(68, 68, 255);
+        }
+
+        .block-cell.filled.green {
+            background-color: rgb(68, 255, 68);
+        }
+
+        .block-cell.filled.yellow {
+            background-color: rgb(255, 255, 68);
+        }
+
+        .block-cell.filled.purple {
+            background-color: rgb(255, 68, 255);
+        }
+
+        .block-cell.filled.orange {
+            background-color: rgb(255, 165, 0);
+        }
+
+        .block-cell.filled.cyan {
+            background-color: rgb(68, 255, 255);
+        }
+
+        .block-cell.filled.lime {
+            background-color: rgb(204, 255, 68);
+        }
+
+        /* Обновляем стили для игрового поля */
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 2px;
+            background-color: #1a1a1a;
+            padding: 10px;
+            border-radius: 8px;
+            width: fit-content;
+            margin: 20px auto;
+        }
+
+        .game-cell {
+            width: 40px;
+            height: 40px;
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .game-cell.filled {
+            border: none;
+        }
+
+        .game-cell.filled.red { background-color: rgb(255, 68, 68); }
+        .game-cell.filled.blue { background-color: rgb(68, 68, 255); }
+        .game-cell.filled.green { background-color: rgb(68, 255, 68); }
+        .game-cell.filled.yellow { background-color: rgb(255, 255, 68); }
+        .game-cell.filled.purple { background-color: rgb(255, 68, 255); }
+        .game-cell.filled.orange { background-color: rgb(255, 165, 0); }
     </style>
 </head>
 <body>
@@ -1106,6 +1174,21 @@
                 .catch(error => console.error('Error:', error));
             }
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const board = document.querySelector('.game-board');
+            
+            // Создаем пустое поле
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'game-cell empty';
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    board.appendChild(cell);
+                }
+            }
+        });
     </script>
 </body>
 </html> 

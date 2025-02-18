@@ -1,8 +1,19 @@
+const COLORS = {
+    red: 'rgb(255, 68, 68)',
+    blue: 'rgb(68, 68, 255)',
+    green: 'rgb(68, 255, 68)',
+    yellow: 'rgb(255, 255, 68)',
+    purple: 'rgb(255, 68, 255)',
+    orange: 'rgb(255, 165, 0)',
+    cyan: 'rgb(68, 255, 255)',
+    lime: 'rgb(204, 255, 68)'
+};
+
 class BlockGenerator {
     constructor() {
-        this.colors = ['red', 'blue', 'green', 'yellow', 'purple'];
         this.container = document.getElementById('blocksGenerator');
         this.generatedBlocks = [];
+        this.colors = Object.keys(COLORS);
         this.blockSize = 40;
         this.gameBoard = null;
         
@@ -32,6 +43,20 @@ class BlockGenerator {
             { shape: [[1, 1, 1, 1]], size: 4 },  // горизонтальный из 4
             { shape: [[1], [1], [1], [1]], size: 4 },  // вертикальный из 4
         ];
+
+        this.setupStyles();
+    }
+
+    setupStyles() {
+        // Добавляем стили для блоков
+        const style = document.createElement('style');
+        style.textContent = Object.entries(COLORS).map(([name, rgb]) => `
+            .block-segment.${name} {
+                background-color: ${rgb};
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+        `).join('\n');
+        document.head.appendChild(style);
     }
 
     setGameBoard(gameBoard) {

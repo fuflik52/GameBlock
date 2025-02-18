@@ -235,18 +235,24 @@ class GameBoard {
         if (shape[0] && col + shape[0].length > this.size) return false;
 
         // Проверка на пересечение с существующими блоками
+        let hasAtLeastOneEmpty = false;
         for (let i = 0; i < shape.length; i++) {
-            if (!Array.isArray(shape[i])) {
-                return false;
-            }
             for (let j = 0; j < shape[i].length; j++) {
-                if (shape[i][j] === 1 && this.board[row + i][col + j] !== null) {
-                    return false;
+                if (shape[i][j] === 1) {
+                    // Проверяем, что ячейка находится в пределах поля
+                    if (row + i >= this.size || col + j >= this.size) {
+                        return false;
+                    }
+                    // Если ячейка занята, возвращаем false
+                    if (this.board[row + i][col + j] !== null) {
+                        return false;
+                    }
+                    hasAtLeastOneEmpty = true;
                 }
             }
         }
 
-        return true;
+        return hasAtLeastOneEmpty;
     }
 
     isNearCenter(row, col, shape) {
@@ -520,15 +526,29 @@ class GameBoard {
     canPlaceBlockAnywhere(block) {
         if (!block || !block.shape) return false;
 
+        let foundValidMove = false;
         // Проверяем каждую позицию на доске
         for (let row = 0; row < this.size; row++) {
             for (let col = 0; col < this.size; col++) {
                 if (this.isValidMove(row, col, block.shape)) {
-                    return true;
+                    // Проверяем, есть ли хотя бы одна пустая ячейка в позиции
+                    let hasEmptyCell = false;
+                    for (let i = 0; i < block.shape.length && !hasEmptyCell; i++) {
+                        for (let j = 0; j < block.shape[i].length && !hasEmptyCell; j++) {
+                            if (block.shape[i][j] === 1 && this.board[row + i][col + j] === null) {
+                                hasEmptyCell = true;
+                            }
+                        }
+                    }
+                    if (hasEmptyCell) {
+                        foundValidMove = true;
+                        break;
+                    }
                 }
             }
+            if (foundValidMove) break;
         }
-        return false;
+        return foundValidMove;
     }
 
     handleGameOver() {
@@ -858,28 +878,30 @@ class GameBoard {
         document.addEventListener('mousedown', (e) => {
             const blockSegment = e.target.closest('.block-segment');
             const block = e.target.closest('.block');
+            const targetBlock = block || blockSegment?.closest('.block');
             
-            if (block || blockSegment) {
+            if (targetBlock) {
                 e.preventDefault();
                 this.isDragging = true;
-                const targetBlock = block || blockSegment.closest('.block');
-                
-                // Создаем клон блока для перетаскивания
-                if (this.dragClone) this.dragClone.remove();
-                this.dragClone = targetBlock.cloneNode(true);
-                this.dragClone.style.position = 'fixed';
-                this.dragClone.style.pointerEvents = 'none';
-                this.dragClone.style.zIndex = '1000';
-                this.dragClone.style.opacity = '0.8';
-                this.dragClone.style.transform = 'scale(1.1)';
-                document.body.appendChild(this.dragClone);
                 
                 try {
+                    // Получаем данные блока
                     this.currentDragData = {
                         color: targetBlock.dataset.color,
                         shape: JSON.parse(targetBlock.dataset.shape),
                         originalBlock: targetBlock
                     };
+                    
+                    // Создаем клон для перетаскивания
+                    if (this.dragClone) this.dragClone.remove();
+                    this.dragClone = targetBlock.cloneNode(true);
+                    this.dragClone.style.position = 'fixed';
+                    this.dragClone.style.pointerEvents = 'none';
+                    this.dragClone.style.zIndex = '1000';
+                    this.dragClone.style.opacity = '0.8';
+                    this.dragClone.style.transform = 'scale(1.1)';
+                    document.body.appendChild(this.dragClone);
+                    
                     targetBlock.classList.add('dragging');
                     
                     const handleMouseMove = (moveEvent) => {
@@ -887,8 +909,10 @@ class GameBoard {
                         moveEvent.preventDefault();
                         
                         // Обновляем позицию клона
-                        this.dragClone.style.left = (moveEvent.clientX - this.dragClone.offsetWidth / 2) + 'px';
-                        this.dragClone.style.top = (moveEvent.clientY - this.dragClone.offsetHeight / 2) + 'px';
+                        if (this.dragClone) {
+                            this.dragClone.style.left = (moveEvent.clientX - this.dragClone.offsetWidth / 2) + 'px';
+                            this.dragClone.style.top = (moveEvent.clientY - this.dragClone.offsetHeight / 2) + 'px';
+                        }
                         
                         // Определяем позицию на игровом поле
                         const boardRect = this.element.getBoundingClientRect();
@@ -899,21 +923,14 @@ class GameBoard {
                         const row = Math.floor(y / cellSize);
                         const col = Math.floor(x / cellSize);
                         
-                        // Ищем ближайшую валидную позицию
-                        const validPosition = this.findNearestValidPosition(row, col, this.currentDragData.shape);
-                        if (validPosition) {
-                            this.clearHighlight();
-                            this.highlightCells(validPosition.row, validPosition.col, this.currentDragData.shape);
-                            this.currentValidPosition = validPosition;
-                            
-                            const potentialMatches = this.checkPotentialMatch(
-                                validPosition.row, 
-                                validPosition.col, 
-                                this.currentDragData.color, 
-                                this.currentDragData.shape
-                            );
-                            if (potentialMatches.length > 0) {
-                                this.highlightPotentialMatches(potentialMatches, this.currentDragData.color);
+                        // Очищаем предыдущую подсветку
+                        this.clearHighlight();
+                        
+                        // Проверяем валидность позиции
+                        if (this.currentDragData && this.currentDragData.shape) {
+                            if (this.isValidMove(row, col, this.currentDragData.shape)) {
+                                this.highlightCells(row, col, this.currentDragData.shape);
+                                this.currentValidPosition = { row, col };
                             }
                         }
                     };
@@ -929,7 +946,7 @@ class GameBoard {
                         }
                         
                         // Размещаем блок, если есть валидная позиция
-                        if (this.currentValidPosition) {
+                        if (this.currentValidPosition && this.currentDragData) {
                             const { row, col } = this.currentValidPosition;
                             if (this.isValidMove(row, col, this.currentDragData.shape)) {
                                 this.placeBlock(row, col, this.currentDragData.color, this.currentDragData.shape);
@@ -941,7 +958,7 @@ class GameBoard {
                         
                         // Очищаем состояние
                         this.clearHighlight();
-                        if (this.currentDragData.originalBlock) {
+                        if (this.currentDragData?.originalBlock) {
                             this.currentDragData.originalBlock.classList.remove('dragging');
                         }
                         this.isDragging = false;
