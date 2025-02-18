@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="100" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
+    <!-- Фон логотипа -->
+    <defs>
+        <linearGradient id="titleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#FF6B6B"/>
+            <stop offset="100%" style="stop-color:#4ECDC4"/>
+        </linearGradient>
+    </defs>
+    
+    <!-- Текст BLOCK -->
+    <text x="20" y="60" font-family="Arial Black" font-size="40" fill="url(#titleGradient)">
+        <tspan fill="#FF6B6B">B</tspan>
+        <tspan fill="#4ECDC4">L</tspan>
+        <tspan fill="#FFE66D">O</tspan>
+        <tspan fill="#FF6B6B">C</tspan>
+        <tspan fill="#4ECDC4">K</tspan>
+    </text>
+    
+    <!-- Текст BLAST -->
+    <text x="40" y="85" font-family="Arial" font-size="25" fill="#FFE66D">BLAST</text>
+    
+    <!-- Корона -->
+    <path d="M100 10 L120 30 L140 10 L120 40 L100 10" fill="#FFD700"/>
+</svg> 

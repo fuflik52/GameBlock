@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <!-- Медаль -->
+    <circle cx="20" cy="20" r="18" fill="#FFD700"/>
+    <circle cx="20" cy="20" r="15" fill="#FFA500"/>
+    
+    <!-- Звезда -->
+    <path d="M20 8 L22 16 L30 16 L24 20 L26 28 L20 24 L14 28 L16 20 L10 16 L18 16 Z" fill="#FFD700"/>
+    
+    <!-- Лента -->
+    <path d="M12 35 L20 20 L28 35" stroke="#FF4444" stroke-width="3" fill="none"/>
+</svg> 
