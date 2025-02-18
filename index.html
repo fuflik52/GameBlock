@@ -87,10 +87,35 @@
 
         <!-- Модальное окно Game Over -->
         <div id="gameOver" class="modal">
-            <div class="modal-content">
-                <h2>Игра окончена!</h2>
-                <p>Ваш счёт: <span id="finalScore">0</span></p>
-                <button id="playAgain" class="btn">Играть снова</button>
+            <div class="modal-content game-over-modal">
+                <div class="modal-header">
+                    <div class="confetti-container">
+                        <div class="confetti"></div>
+                        <div class="confetti"></div>
+                        <div class="confetti"></div>
+                    </div>
+                    <h2 class="game-over-title">Игра окончена!</h2>
+                </div>
+                <div class="score-details">
+                    <div class="current-score">
+                        <div class="score-label">Ваш счёт:</div>
+                        <div class="score-value">
+                            <span id="finalScore">0</span>
+                        </div>
+                    </div>
+                    <div class="score-divider"></div>
+                    <div class="best-score">
+                        <div class="score-label">Лучший результат:</div>
+                        <div class="trophy-score">
+                            <i class="fas fa-trophy"></i>
+                            <span id="modalHighScore">0</span>
+                        </div>
+                    </div>
+                </div>
+                <button id="playAgain" class="play-again-btn">
+                    <i class="fas fa-redo"></i>
+                    Играть снова
+                </button>
             </div>
         </div>
 

@@ -234,4 +234,397 @@ input:checked + .toggle-slider:before {
 
 .menu-button:hover {
     background-color: #555;
+}
+
+.score-details {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin: 20px 0;
+    gap: 30px;
+}
+
+.current-score, .best-score {
+    text-align: center;
+}
+
+.current-score p, .best-score p {
+    margin: 0 0 10px 0;
+    color: #666;
+    font-size: 0.9em;
+}
+
+.current-score span {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #4CAF50;
+}
+
+.trophy-score {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.trophy-score i {
+    font-size: 1.8em;
+}
+
+.trophy-score span {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: gold;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+.new-record {
+    animation: newRecord 0.5s ease-in-out;
+}
+
+@keyframes newRecord {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.block-preview.width-4 {
+    max-width: 60px;
+    margin: 0 auto;
+    transform: scale(0.6);
+}
+
+.block-preview.width-4 .block-cell {
+    aspect-ratio: 1;
+    min-width: 15px;
+    padding: 2px;
+}
+
+.block-cell.highlight {
+    transition: background-color 0.3s ease;
+}
+
+.block-cell.highlight-match {
+    animation: highlightMatch 0.3s ease;
+}
+
+@keyframes highlightMatch {
+    0% { filter: brightness(1); }
+    50% { filter: brightness(1.5); }
+    100% { filter: brightness(1); }
+}
+
+.block {
+    cursor: grab;
+    transition: transform 0.1s ease-out;
+    user-select: none;
+    touch-action: none;
+    position: relative;
+    z-index: 1;
+}
+
+.block:hover {
+    transform: scale(1.05);
+    z-index: 2;
+}
+
+.block.dragging {
+    cursor: grabbing !important;
+    transform: scale(1.1);
+    opacity: 0.8;
+    z-index: 1000;
+    pointer-events: none;
+    position: fixed;
+    margin: 0;
+    padding: 0;
+    will-change: transform;
+}
+
+.block-segment {
+    width: 100%;
+    height: 100%;
+    border-radius: 4px;
+    transition: all 0.2s ease-out;
+    cursor: grab;
+    pointer-events: auto;
+}
+
+.block-segment:hover {
+    filter: brightness(1.1);
+    transform: scale(1.05);
+}
+
+.block.dragging .block-segment {
+    cursor: grabbing !important;
+    filter: brightness(1.2);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Добавляем эффект при наведении на любую часть блока */
+.block:hover .block-segment {
+    filter: brightness(1.1);
+}
+
+/* Добавляем подсветку при захвате */
+.block:active,
+.block-segment:active {
+    cursor: grabbing;
+    transform: scale(1.1);
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+.game-over-modal {
+    background: linear-gradient(135deg, #2c3e50, #3498db);
+    border-radius: 20px;
+    padding: 30px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    transform: scale(0.9);
+    animation: modalAppear 0.3s ease-out forwards;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+@keyframes modalAppear {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    position: relative;
+    margin-bottom: 30px;
+}
+
+.game-over-title {
+    color: #fff;
+    font-size: 2.5em;
+    margin: 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    animation: titleGlow 2s ease-in-out infinite;
+}
+
+@keyframes titleGlow {
+    0%, 100% { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3); }
+    50% { text-shadow: 0 0 15px rgba(255, 255, 255, 0.5); }
+}
+
+.score-details {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 20px;
+    margin: 20px 0;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    gap: 20px;
+}
+
+.score-divider {
+    width: 2px;
+    height: 60px;
+    background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.3), transparent);
+}
+
+.score-label {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9em;
+    margin-bottom: 10px;
+}
+
+.current-score .score-value {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #2ecc71;
+    text-shadow: 0 0 10px rgba(46, 204, 113, 0.5);
+}
+
+.trophy-score {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.trophy-score i {
+    color: #f1c40f;
+    font-size: 1.8em;
+    animation: trophyShine 3s ease-in-out infinite;
+}
+
+@keyframes trophyShine {
+    0%, 100% { text-shadow: 0 0 5px rgba(241, 196, 15, 0.5); }
+    50% { text-shadow: 0 0 20px rgba(241, 196, 15, 0.8); }
+}
+
+.trophy-score span {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #f1c40f;
+    text-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+}
+
+.play-again-btn {
+    background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 50px;
+    font-size: 1.4em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    box-shadow: 0 5px 20px rgba(255, 107, 107, 0.4),
+                inset 0 -2px 0 rgba(0, 0, 0, 0.2),
+                inset 0 2px 0 rgba(255, 255, 255, 0.2);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    letter-spacing: 1px;
+    width: 80%;
+    max-width: 300px;
+    margin-left: auto;
+    margin-right: auto;
+    position: relative;
+    overflow: hidden;
+}
+
+.play-again-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+    );
+    transition: 0.5s;
+}
+
+.play-again-btn:hover {
+    transform: translateY(-3px) scale(1.02);
+    background: linear-gradient(45deg, #ff5252, #ff7675);
+    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.5),
+                inset 0 -2px 0 rgba(0, 0, 0, 0.2),
+                inset 0 2px 0 rgba(255, 255, 255, 0.2);
+}
+
+.play-again-btn:hover::before {
+    left: 100%;
+}
+
+.play-again-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 15px rgba(255, 107, 107, 0.4);
+}
+
+.play-again-btn i {
+    font-size: 1.3em;
+    animation: spin 2s linear infinite;
+    animation-play-state: paused;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.play-again-btn:hover i {
+    animation-play-state: running;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #2d3436, #636e72);
+    border-radius: 20px;
+    padding: 30px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    max-width: 90%;
+    width: 400px;
+    margin: 20px;
+}
+
+.game-over-title {
+    color: white;
+    font-size: 2.5em;
+    font-weight: bold;
+    margin-bottom: 30px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    letter-spacing: 1px;
+}
+
+.confetti-container {
+    position: absolute;
+    top: -20px;
+    left: 0;
+    right: 0;
+    height: 20px;
+    overflow: hidden;
+}
+
+.confetti {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: #f1c40f;
+    animation: confettiFall 3s ease-in-out infinite;
+}
+
+.confetti:nth-child(2) {
+    left: 40%;
+    background: #e74c3c;
+    animation-delay: -1s;
+}
+
+.confetti:nth-child(3) {
+    left: 60%;
+    background: #3498db;
+    animation-delay: -2s;
+}
+
+@keyframes confettiFall {
+    0% {
+        transform: translateY(-20px) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+.new-record {
+    animation: newRecord 0.5s ease-in-out, recordGlow 2s ease-in-out infinite;
+}
+
+@keyframes recordGlow {
+    0%, 100% { text-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
+    50% { text-shadow: 0 0 20px rgba(241, 196, 15, 0.8); }
 } 

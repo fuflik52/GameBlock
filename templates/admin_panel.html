@@ -481,6 +481,70 @@
             align-items: center;
             gap: 10px;
         }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .chart-legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        .file-stats {
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+
+        .file-stats-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .file-stats-table th,
+        .file-stats-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #444;
+        }
+
+        .file-stats-table th {
+            background: rgba(0, 0, 0, 0.2);
+            color: #4CAF50;
+        }
+
+        .load-indicator {
+            width: 100px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .load-indicator-fill {
+            height: 100%;
+            background: #4CAF50;
+            transition: width 0.3s ease;
+        }
     </style>
 </head>
 <body>
@@ -493,6 +557,18 @@
                 <a href="#dashboard" class="nav-link active" onclick="showTab('dashboard')">
                     <i class="fas fa-chart-line"></i>
                     Статистика
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#activity" class="nav-link" onclick="showTab('activity')">
+                    <i class="fas fa-user-clock"></i>
+                    Активность
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#server-load" class="nav-link" onclick="showTab('server-load')">
+                    <i class="fas fa-server"></i>
+                    Нагрузка сервера
                 </a>
             </li>
             <li class="nav-item">
@@ -581,6 +657,100 @@
                             {% endfor %}
                         </ul>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка активности -->
+        <div id="activity" class="tab-content">
+            <div class="content-header">
+                <h2 class="page-title">Активность пользователей</h2>
+                <button class="refresh-button" onclick="updateActivityCharts()">
+                    <i class="fas fa-sync-alt"></i>
+                    Обновить
+                </button>
+            </div>
+            
+            <div class="section">
+                <h3 class="section-title">Онлайн по часам</h3>
+                <div class="chart-container">
+                    <canvas id="hourlyActivityChart"></canvas>
+                </div>
+                <div class="chart-legend">
+                    <div class="legend-item">
+                        <span class="legend-color" style="background-color: rgba(76, 175, 80, 0.2)"></span>
+                        <span>Активные пользователи</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3 class="section-title">Статистика за неделю</h3>
+                <div class="chart-container">
+                    <canvas id="weeklyActivityChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка нагрузки сервера -->
+        <div id="server-load" class="tab-content">
+            <div class="content-header">
+                <h2 class="page-title">Нагрузка сервера</h2>
+                <button class="refresh-button" onclick="updateServerLoadCharts()">
+                    <i class="fas fa-sync-alt"></i>
+                    Обновить
+                </button>
+            </div>
+
+            <div class="section">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="cpuUsage">0%</div>
+                        <div class="stat-label">CPU</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="memoryUsage">0%</div>
+                        <div class="stat-label">Память</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="diskUsage">0%</div>
+                        <div class="stat-label">Диск</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3 class="section-title">Нагрузка CPU</h3>
+                <div class="chart-container">
+                    <canvas id="cpuLoadChart"></canvas>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3 class="section-title">Использование памяти</h3>
+                <div class="chart-container">
+                    <canvas id="memoryLoadChart"></canvas>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3 class="section-title">Нагрузка на файлы</h3>
+                <div class="chart-container">
+                    <canvas id="fileLoadChart"></canvas>
+                </div>
+                <div class="file-stats">
+                    <table class="file-stats-table">
+                        <thead>
+                            <tr>
+                                <th>Файл</th>
+                                <th>Размер</th>
+                                <th>Обращений</th>
+                                <th>Нагрузка</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fileStatsBody">
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -700,7 +870,191 @@
         <i class="fas fa-trophy"></i>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        let charts = {};
+
+        function initCharts() {
+            // Инициализация графика активности по часам
+            charts.hourlyActivity = new Chart(document.getElementById('hourlyActivityChart'), {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                    datasets: [{
+                        label: 'Активные пользователи',
+                        data: [],
+                        fill: true,
+                        backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                        borderColor: '#4CAF50',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#888'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#888'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            // Инициализация остальных графиков...
+            initServerLoadCharts();
+        }
+
+        function updateActivityCharts() {
+            fetch('/api/activity_stats')
+                .then(response => response.json())
+                .then(data => {
+                    charts.hourlyActivity.data.datasets[0].data = data.hourly_activity;
+                    charts.hourlyActivity.update();
+                    // Обновление других графиков активности...
+                });
+        }
+
+        function initServerLoadCharts() {
+            // Инициализация графиков нагрузки сервера
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#888',
+                            callback: value => value + '%'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#888'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            };
+
+            charts.cpuLoad = new Chart(document.getElementById('cpuLoadChart'), {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'CPU Load',
+                        data: [],
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: commonOptions
+            });
+
+            // Аналогично для других графиков...
+        }
+
+        function updateServerLoadCharts() {
+            fetch('/api/server_stats')
+                .then(response => response.json())
+                .then(data => {
+                    // Обновление значений статистики
+                    document.getElementById('cpuUsage').textContent = data.cpu + '%';
+                    document.getElementById('memoryUsage').textContent = data.memory + '%';
+                    document.getElementById('diskUsage').textContent = data.disk + '%';
+
+                    // Обновление графиков
+                    updateLoadChart(charts.cpuLoad, data.cpu_history);
+                    // Обновление других графиков...
+
+                    // Обновление таблицы статистики файлов
+                    updateFileStats(data.file_stats);
+                });
+        }
+
+        function updateLoadChart(chart, data) {
+            chart.data.labels = data.map(d => d.time);
+            chart.data.datasets[0].data = data.map(d => d.value);
+            chart.update();
+        }
+
+        function updateFileStats(stats) {
+            const tbody = document.getElementById('fileStatsBody');
+            tbody.innerHTML = '';
+            
+            stats.forEach(file => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${file.name}</td>
+                    <td>${formatFileSize(file.size)}</td>
+                    <td>${file.accesses}</td>
+                    <td>
+                        <div class="load-indicator">
+                            <div class="load-indicator-fill" style="width: ${file.load}%"></div>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function formatFileSize(bytes) {
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let size = bytes;
+            let unitIndex = 0;
+            
+            while (size >= 1024 && unitIndex < units.length - 1) {
+                size /= 1024;
+                unitIndex++;
+            }
+            
+            return `${size.toFixed(1)} ${units[unitIndex]}`;
+        }
+
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            updateActivityCharts();
+            updateServerLoadCharts();
+            
+            // Автообновление каждые 30 секунд
+            setInterval(() => {
+                updateActivityCharts();
+                updateServerLoadCharts();
+            }, 30000);
+        });
+
         function showTab(tabId) {
             // Скрываем все вкладки
             document.querySelectorAll('.tab-content').forEach(tab => {

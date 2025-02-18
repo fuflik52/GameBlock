@@ -1,7 +1,8 @@
 from flask import Flask, send_from_directory, render_template, request, redirect, url_for, session, jsonify
 import os
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta
+import psutil
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-123'  # Для работы с сессиями
@@ -12,7 +13,8 @@ game_stats = {
     'online_users': set(),
     'total_games': 0,
     'player_scores': [],  # Список словарей с данными игроков
-    'users': {}  # Словарь с данными пользователей
+    'users': {},  # Словарь с данными пользователей
+    'file_accesses': {}  # Словарь для отслеживания обращений к файлам
 }
 
 def generate_user_code(user_id):
@@ -253,6 +255,101 @@ def user_details(user_code):
         return 'Пользователь не найден', 404
         
     return render_template('user_details.html', user=user_data)
+
+@app.route('/api/activity_stats')
+def get_activity_stats():
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    # Получаем статистику активности по часам
+    current_hour = datetime.now().hour
+    hourly_stats = [0] * 24
+    
+    for user_id, user_data in game_stats['users'].items():
+        last_active = user_data.get('last_active')
+        if isinstance(last_active, str):
+            try:
+                last_active = datetime.strptime(last_active, '%Y-%m-%d %H:%M:%S')
+                if last_active.date() == datetime.now().date():
+                    hourly_stats[last_active.hour] += 1
+            except ValueError:
+                continue
+
+    return jsonify({
+        'hourly_activity': hourly_stats,
+        'current_hour': current_hour
+    })
+
+@app.route('/api/server_stats')
+def get_server_stats():
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    # Получаем статистику использования CPU
+    cpu_percent = psutil.cpu_percent()
+    
+    # Получаем статистику использования памяти
+    memory = psutil.virtual_memory()
+    memory_percent = memory.percent
+    
+    # Получаем статистику использования диска
+    disk = psutil.disk_usage('/')
+    disk_percent = disk.percent
+    
+    # Получаем историю нагрузки CPU
+    cpu_history = []
+    current_time = datetime.now()
+    for i in range(60):
+        cpu_history.append({
+            'time': (current_time - timedelta(minutes=i)).strftime('%H:%M'),
+            'value': psutil.cpu_percent(interval=None)
+        })
+    cpu_history.reverse()
+    
+    # Получаем статистику по файлам
+    file_stats = []
+    for root, dirs, files in os.walk('.'):
+        for file in files:
+            if file.endswith(('.py', '.js', '.html', '.css')):
+                file_path = os.path.join(root, file)
+                try:
+                    stats = os.stat(file_path)
+                    file_stats.append({
+                        'name': file_path,
+                        'size': stats.st_size,
+                        'accesses': game_stats['file_accesses'].get(file_path, 0),
+                        'load': calculate_file_load(file_path)
+                    })
+                except OSError:
+                    continue
+
+    return jsonify({
+        'cpu': cpu_percent,
+        'memory': memory_percent,
+        'disk': disk_percent,
+        'cpu_history': cpu_history,
+        'file_stats': sorted(file_stats, key=lambda x: x['load'], reverse=True)[:10]
+    })
+
+def calculate_file_load(file_path):
+    """Рассчитывает нагрузку на файл на основе количества обращений и размера"""
+    accesses = game_stats['file_accesses'].get(file_path, 0)
+    try:
+        size = os.path.getsize(file_path)
+        # Простая формула для расчета нагрузки
+        load = (accesses * size) / (1024 * 1024)  # Нормализуем по МБ
+        return min(100, load)
+    except OSError:
+        return 0
+
+# Добавляем отслеживание обращений к файлам
+@app.before_request
+def track_file_access():
+    if request.path.startswith('/static/'):
+        file_path = request.path[8:]  # Убираем '/static/' из пути
+        if 'file_accesses' not in game_stats:
+            game_stats['file_accesses'] = {}
+        game_stats['file_accesses'][file_path] = game_stats['file_accesses'].get(file_path, 0) + 1
 
 if __name__ == '__main__':
     app.run(port=8000, debug=True) 

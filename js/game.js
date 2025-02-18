@@ -289,7 +289,26 @@ class Game {
             return;
         }
         
+        const modalHighScoreElement = document.getElementById('modalHighScore');
         this.finalScoreElement.textContent = this.score;
+        
+        // Обновляем лучший результат если текущий счет больше
+        if (this.score > this.highScore) {
+            this.highScore = this.score;
+            localStorage.setItem('highScore', this.highScore);
+            
+            // Анимируем новый рекорд
+            if (modalHighScoreElement) {
+                modalHighScoreElement.textContent = this.highScore;
+                modalHighScoreElement.classList.add('new-record');
+                setTimeout(() => {
+                    modalHighScoreElement.classList.remove('new-record');
+                }, 1000);
+            }
+        } else if (modalHighScoreElement) {
+            modalHighScoreElement.textContent = this.highScore;
+        }
+        
         this.gameOverModal.style.display = 'flex';
     }
 

@@ -7,26 +7,43 @@ class GameBoard {
         this.currentDragData = null;
         this.gameStarted = false;
         this.isTouchDevice = 'ontouchstart' in window;
+        this.isDragging = false;
+        this.dragClone = null;
         this.setupBoard();
         this.setupTouchEvents();
+        this.setupDragEvents();
         
         // Добавляем контейнер для логов
         this.logContainer = document.createElement('div');
         this.logContainer.className = 'log-container';
         document.body.appendChild(this.logContainer);
         
+        // Добавляем обработчики событий перетаскивания
         this.element.addEventListener('dragenter', (e) => {
             e.preventDefault();
         });
         
-        this.element.addEventListener('dragstart', (e) => {
-            if (e.target.closest('.block')) {
+        document.addEventListener('dragstart', (e) => {
+            const block = e.target.closest('.block');
+            if (block) {
                 try {
-                    this.currentDragData = JSON.parse(e.dataTransfer.getData('text/plain'));
+                    this.currentDragData = {
+                        color: block.dataset.color,
+                        shape: JSON.parse(block.dataset.shape)
+                    };
+                    block.classList.add('dragging');
                 } catch (error) {
-                    // Игнорируем ошибку, данные будут установлены позже
+                    console.warn('Error setting drag data:', error);
                 }
             }
+        });
+
+        document.addEventListener('dragend', (e) => {
+            const block = e.target.closest('.block');
+            if (block) {
+                block.classList.remove('dragging');
+            }
+            this.clearHighlight();
         });
 
         // Изменяем проверку окончания игры
@@ -83,40 +100,21 @@ class GameBoard {
     handleDragOver(e) {
         e.preventDefault();
         const cell = e.target.closest('.cell');
-        if (!cell || !this.currentDragData) {
-            e.dataTransfer.dropEffect = 'none';
-            return;
-        }
+        if (!cell || !this.currentDragData) return;
 
-        const shape = this.currentDragData.shape;
-        const boardRect = this.element.getBoundingClientRect();
-        const cellSize = boardRect.width / this.size;
-
-        // Более точное определение позиции
-        const x = e.clientX - boardRect.left;
-        const y = e.clientY - boardRect.top;
+        const row = parseInt(cell.dataset.row);
+        const col = parseInt(cell.dataset.col);
         
-        // Учитываем смещение для центрирования блока относительно курсора
-        const offsetX = (shape[0].length * cellSize) / 2;
-        const offsetY = (shape.length * cellSize) / 2;
-        
-        const nearestRow = Math.floor((y - offsetY + cellSize/2) / cellSize);
-        const nearestCol = Math.floor((x - offsetX + cellSize/2) / cellSize);
-
-        this.clearHighlight();
-
-        // Ищем ближайшую валидную позицию
-        const validPosition = this.findNearestValidPosition(nearestRow, nearestCol, shape);
-        
-        if (validPosition) {
-            this.highlightCells(validPosition.row, validPosition.col, shape);
-            e.dataTransfer.dropEffect = 'move';
+        if (this.isValidMove(row, col, this.currentDragData.shape)) {
+            this.clearHighlight();
+            this.highlightCells(row, col, this.currentDragData.shape);
+            this.currentValidPosition = { row, col };
             
-            // Сохраняем текущую валидную позицию
-            this.currentValidPosition = validPosition;
-        } else {
-            e.dataTransfer.dropEffect = 'none';
-            this.currentValidPosition = null;
+            // Проверяем потенциальные совпадения
+            const potentialMatches = this.checkPotentialMatch(row, col, this.currentDragData.color, this.currentDragData.shape);
+            if (potentialMatches.length > 0) {
+                this.highlightPotentialMatches(potentialMatches, this.currentDragData.color);
+            }
         }
     }
 
@@ -126,22 +124,18 @@ class GameBoard {
             return { row, col };
         }
 
-        // Проверяем ближайшие позиции по спирали
-        for (let radius = 1; radius <= 2; radius++) {
-            for (let dr = -radius; dr <= radius; dr++) {
-                for (let dc = -radius; dc <= radius; dc++) {
-                    // Пропускаем уже проверенные позиции
-                    if (Math.abs(dr) < radius && Math.abs(dc) < radius) continue;
-                    
-                    const newRow = row + dr;
-                    const newCol = col + dc;
-                    
-                    if (this.isValidMove(newRow, newCol, shape)) {
-                        return { row: newRow, col: newCol };
-                    }
+        // Проверяем ближайшие позиции в радиусе 1 клетки
+        for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+                const newRow = row + dr;
+                const newCol = col + dc;
+                
+                if (this.isValidMove(newRow, newCol, shape)) {
+                    return { row: newRow, col: newCol };
                 }
             }
         }
+
         return null;
     }
 
@@ -200,53 +194,59 @@ class GameBoard {
 
     handleDrop(e) {
         e.preventDefault();
-        if (!this.currentDragData || !this.currentValidPosition) {
-            return false;
-        }
+        const cell = e.target.closest('.cell');
+        if (!cell || !this.currentDragData) return false;
 
-        const color = this.currentDragData.color;
-        const shape = this.currentDragData.shape;
-        const { row, col } = this.currentValidPosition;
+        const row = parseInt(cell.dataset.row);
+        const col = parseInt(cell.dataset.col);
 
-        if (this.isValidMove(row, col, shape)) {
-            this.placeBlock(row, col, color, shape);
+        if (this.isValidMove(row, col, this.currentDragData.shape)) {
+            // Мгновенно размещаем блок
+            this.placeBlock(row, col, this.currentDragData.color, this.currentDragData.shape);
             const draggedBlock = document.querySelector('.block.dragging');
             if (draggedBlock && this.blockGenerator) {
                 this.blockGenerator.removeBlock(draggedBlock);
             }
-            this.currentValidPosition = null;
 
-            // Проверяем возможность продолжения игры после небольшой задержки
-            // чтобы дать время на генерацию новых блоков
-            setTimeout(() => {
-                if (this.blockGenerator && this.blockGenerator.generatedBlocks.length > 0) {
-                    this.checkGameCanContinue();
-                }
-            }, 300);
+            // Очищаем состояние перетаскивания
+            this.clearHighlight();
+            this.currentDragData = null;
+
+            // Проверяем возможность продолжения игры
+            if (this.blockGenerator && this.blockGenerator.generatedBlocks.length > 0) {
+                this.checkGameCanContinue();
+            }
 
             return true;
         }
 
-        this.currentValidPosition = null;
         return false;
     }
 
     isValidMove(row, col, shape) {
+        // Проверяем, что shape существует и является массивом
+        if (!shape || !Array.isArray(shape)) {
+            return false;
+        }
+
         // Базовые проверки границ
-        if (!shape || row < 0 || col < 0) return false;
+        if (row < 0 || col < 0) return false;
         if (row + shape.length > this.size) return false;
-        if (col + shape[0].length > this.size) return false;
+        if (shape[0] && col + shape[0].length > this.size) return false;
 
         // Проверка на пересечение с существующими блоками
         for (let i = 0; i < shape.length; i++) {
-            for (let j = 0; j < shape[0].length; j++) {
+            if (!Array.isArray(shape[i])) {
+                return false;
+            }
+            for (let j = 0; j < shape[i].length; j++) {
                 if (shape[i][j] === 1 && this.board[row + i][col + j] !== null) {
                     return false;
                 }
             }
         }
 
-        return true; // Разрешаем размещение если все проверки пройдены
+        return true;
     }
 
     isNearCenter(row, col, shape) {
@@ -281,19 +281,24 @@ class GameBoard {
     }
 
     placeBlock(row, col, color, shape) {
+        // Размещаем блок мгновенно
         for (let i = 0; i < shape.length; i++) {
-            for (let j = 0; j < shape[0].length; j++) {
+            for (let j = 0; j < shape[i].length; j++) {
                 if (shape[i][j] === 1) {
                     const cell = this.element.children[this.getCellIndex(row + i, col + j)];
                     const block = document.createElement('div');
                     block.className = `block-segment ${color}`;
+                    // Добавляем стили для мгновенного появления
+                    block.style.opacity = '1';
+                    block.style.transform = 'scale(1)';
                     cell.appendChild(block);
                     this.board[row + i][col + j] = color;
                 }
             }
         }
-        // Проверяем совпадения после размещения блока
-        setTimeout(() => this.checkMatches(), 100);
+
+        // Проверяем совпадения сразу
+        this.checkMatches();
     }
 
     getCellIndex(row, col) {
@@ -492,13 +497,32 @@ class GameBoard {
         });
     }
 
+    checkGameCanContinue() {
+        if (!this.blockGenerator || !this.gameStarted) return true;
+
+        // Проверяем наличие пустых ячеек
+        const hasEmptyCells = this.hasEmptyCells();
+        
+        // Проверяем, можно ли разместить хотя бы один из имеющихся блоков
+        const hasValidMoves = this.blockGenerator.generatedBlocks.some(block => {
+            return this.canPlaceBlockAnywhere(block);
+        });
+
+        // Если нет пустых ячеек ИЛИ нет возможных ходов - завершаем игру
+        if (!hasEmptyCells || !hasValidMoves) {
+            this.handleGameOver();
+            return false;
+        }
+
+        return true;
+    }
+
     canPlaceBlockAnywhere(block) {
         if (!block || !block.shape) return false;
 
         // Проверяем каждую позицию на доске
-        for (let row = 0; row <= this.size - block.shape.length; row++) {
-            for (let col = 0; col <= this.size - block.shape[0].length; col++) {
-                // Проверяем все возможные повороты блока
+        for (let row = 0; row < this.size; row++) {
+            for (let col = 0; col < this.size; col++) {
                 if (this.isValidMove(row, col, block.shape)) {
                     return true;
                 }
@@ -507,49 +531,25 @@ class GameBoard {
         return false;
     }
 
-    checkGameCanContinue() {
-        if (!this.blockGenerator || !this.gameStarted) return true;
-
-        // Проверяем наличие пустых ячеек
-        if (!this.hasEmptyCells()) {
-            // Если нет пустых ячеек, проверяем возможность размещения блоков
-            const canPlaceAnyBlock = this.blockGenerator.generatedBlocks.some(block => {
-                return this.canPlaceBlockAnywhere(block);
-            });
-
-            if (!canPlaceAnyBlock) {
-                this.handleGameOver();
-                return false;
-            }
-        }
-
-        // Проверяем, можно ли разместить хотя бы один из имеющихся блоков
-        const hasAnyValidMove = this.blockGenerator.generatedBlocks.some(block => {
-            return this.canPlaceBlockAnywhere(block);
-        });
-
-        // Завершаем игру только если нет возможности разместить ни один блок
-        if (!hasAnyValidMove) {
-            this.handleGameOver();
-            return false;
-        }
-
-        return true;
-    }
-
     handleGameOver() {
         if (!this.gameStarted) return;
 
         this.gameStarted = false;
         clearInterval(this.checkGameOverInterval);
 
+        // Показываем окно проигрыша
         const gameOverModal = document.getElementById('gameOver');
         const finalScoreElement = document.getElementById('finalScore');
+        const modalHighScoreElement = document.getElementById('modalHighScore');
         
         if (window.game) {
             const finalScore = parseInt(window.game.score) || 0;
-            finalScoreElement.textContent = finalScore;
-            window.game.score = finalScore;
+            if (finalScoreElement) {
+                finalScoreElement.textContent = finalScore;
+            }
+            if (modalHighScoreElement) {
+                modalHighScoreElement.textContent = window.game.highScore || 0;
+            }
         }
         
         if (gameOverModal) {
@@ -763,6 +763,213 @@ class GameBoard {
             }
         }
         return true;
+    }
+
+    checkPotentialMatch(row, col, color, shape) {
+        // Временно размещаем блок для проверки
+        const tempBoard = this.board.map(row => [...row]);
+        for (let i = 0; i < shape.length; i++) {
+            for (let j = 0; j < shape[0].length; j++) {
+                if (shape[i][j] === 1) {
+                    tempBoard[row + i][col + j] = color;
+                }
+            }
+        }
+
+        // Проверяем горизонтальные совпадения
+        const matches = new Set();
+        for (let r = 0; r < this.size; r++) {
+            let currentColor = null;
+            let count = 0;
+            let startCol = 0;
+            
+            for (let c = 0; c <= this.size; c++) {
+                const cellColor = c < this.size ? tempBoard[r][c] : null;
+                
+                if (cellColor === currentColor && cellColor !== null) {
+                    count++;
+                } else {
+                    if (count >= 7 && currentColor === color) { // Изменено с 3 на 7
+                        // Добавляем только блоки того же цвета, что и размещаемый
+                        for (let i = 0; i < count; i++) {
+                            matches.add(`${r},${startCol + i}`);
+                        }
+                    }
+                    currentColor = cellColor;
+                    count = 1;
+                    startCol = c;
+                }
+            }
+        }
+
+        // Проверяем вертикальные совпадения
+        for (let c = 0; c < this.size; c++) {
+            let currentColor = null;
+            let count = 0;
+            let startRow = 0;
+            
+            for (let r = 0; r <= this.size; r++) {
+                const cellColor = r < this.size ? tempBoard[r][c] : null;
+                
+                if (cellColor === currentColor && cellColor !== null) {
+                    count++;
+                } else {
+                    if (count >= 7 && currentColor === color) { // Изменено с 3 на 7
+                        // Добавляем только блоки того же цвета, что и размещаемый
+                        for (let i = 0; i < count; i++) {
+                            matches.add(`${startRow + i},${c}`);
+                        }
+                    }
+                    currentColor = cellColor;
+                    count = 1;
+                    startRow = r;
+                }
+            }
+        }
+
+        return Array.from(matches).map(pos => {
+            const [r, c] = pos.split(',').map(Number);
+            return { row: r, col: c };
+        });
+    }
+
+    highlightPotentialMatches(matches, color) {
+        // Убираем предыдущие подсветки
+        const allBlocks = this.element.querySelectorAll('.block-segment');
+        allBlocks.forEach(block => {
+            block.classList.remove('highlight');
+            block.style.backgroundColor = '';
+        });
+
+        // Подсвечиваем только те блоки, которые будут соединяться
+        matches.forEach(match => {
+            const cell = this.element.children[this.getCellIndex(match.row, match.col)];
+            const block = cell.querySelector('.block-segment');
+            if (block) {
+                block.classList.add('highlight');
+                // Используем полупрозрачный цвет для подсветки
+                block.style.backgroundColor = color;
+                block.style.opacity = '0.7';
+            }
+        });
+    }
+
+    setupDragEvents() {
+        document.addEventListener('mousedown', (e) => {
+            const blockSegment = e.target.closest('.block-segment');
+            const block = e.target.closest('.block');
+            
+            if (block || blockSegment) {
+                e.preventDefault();
+                this.isDragging = true;
+                const targetBlock = block || blockSegment.closest('.block');
+                
+                // Создаем клон блока для перетаскивания
+                if (this.dragClone) this.dragClone.remove();
+                this.dragClone = targetBlock.cloneNode(true);
+                this.dragClone.style.position = 'fixed';
+                this.dragClone.style.pointerEvents = 'none';
+                this.dragClone.style.zIndex = '1000';
+                this.dragClone.style.opacity = '0.8';
+                this.dragClone.style.transform = 'scale(1.1)';
+                document.body.appendChild(this.dragClone);
+                
+                try {
+                    this.currentDragData = {
+                        color: targetBlock.dataset.color,
+                        shape: JSON.parse(targetBlock.dataset.shape),
+                        originalBlock: targetBlock
+                    };
+                    targetBlock.classList.add('dragging');
+                    
+                    const handleMouseMove = (moveEvent) => {
+                        if (!this.isDragging) return;
+                        moveEvent.preventDefault();
+                        
+                        // Обновляем позицию клона
+                        this.dragClone.style.left = (moveEvent.clientX - this.dragClone.offsetWidth / 2) + 'px';
+                        this.dragClone.style.top = (moveEvent.clientY - this.dragClone.offsetHeight / 2) + 'px';
+                        
+                        // Определяем позицию на игровом поле
+                        const boardRect = this.element.getBoundingClientRect();
+                        const x = moveEvent.clientX - boardRect.left;
+                        const y = moveEvent.clientY - boardRect.top;
+                        
+                        const cellSize = boardRect.width / this.size;
+                        const row = Math.floor(y / cellSize);
+                        const col = Math.floor(x / cellSize);
+                        
+                        // Ищем ближайшую валидную позицию
+                        const validPosition = this.findNearestValidPosition(row, col, this.currentDragData.shape);
+                        if (validPosition) {
+                            this.clearHighlight();
+                            this.highlightCells(validPosition.row, validPosition.col, this.currentDragData.shape);
+                            this.currentValidPosition = validPosition;
+                            
+                            const potentialMatches = this.checkPotentialMatch(
+                                validPosition.row, 
+                                validPosition.col, 
+                                this.currentDragData.color, 
+                                this.currentDragData.shape
+                            );
+                            if (potentialMatches.length > 0) {
+                                this.highlightPotentialMatches(potentialMatches, this.currentDragData.color);
+                            }
+                        }
+                    };
+
+                    const handleMouseUp = (upEvent) => {
+                        if (!this.isDragging) return;
+                        upEvent.preventDefault();
+                        
+                        // Очищаем клон
+                        if (this.dragClone) {
+                            this.dragClone.remove();
+                            this.dragClone = null;
+                        }
+                        
+                        // Размещаем блок, если есть валидная позиция
+                        if (this.currentValidPosition) {
+                            const { row, col } = this.currentValidPosition;
+                            if (this.isValidMove(row, col, this.currentDragData.shape)) {
+                                this.placeBlock(row, col, this.currentDragData.color, this.currentDragData.shape);
+                                if (this.blockGenerator && this.currentDragData.originalBlock) {
+                                    this.blockGenerator.removeBlock(this.currentDragData.originalBlock);
+                                }
+                            }
+                        }
+                        
+                        // Очищаем состояние
+                        this.clearHighlight();
+                        if (this.currentDragData.originalBlock) {
+                            this.currentDragData.originalBlock.classList.remove('dragging');
+                        }
+                        this.isDragging = false;
+                        this.currentDragData = null;
+                        this.currentValidPosition = null;
+                        
+                        document.removeEventListener('mousemove', handleMouseMove);
+                        document.removeEventListener('mouseup', handleMouseUp);
+                    };
+
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                } catch (error) {
+                    console.warn('Ошибка при установке данных перетаскивания:', error);
+                    this.cleanupDragState();
+                }
+            }
+        });
+    }
+
+    cleanupDragState() {
+        this.isDragging = false;
+        this.currentDragData = null;
+        this.currentValidPosition = null;
+        if (this.dragClone) {
+            this.dragClone.remove();
+            this.dragClone = null;
+        }
     }
 }
 
